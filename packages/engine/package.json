@@ -1,0 +1,40 @@
+{
+  "name": "@burstify/engine",
+  "description": "Cross platform workflow engine",
+  "license": "MIT",
+  "keywords": [
+    "workflow",
+    "state-manchine",
+    "burstify",
+    "engine",
+    "step"
+  ],
+  "main": "dist/index.js",
+  "types": "types",
+  "type": "commonjs",
+  "author": {
+    "name": "Son (Rikky) Le",
+    "email": "son.levuthai@gmail.com",
+    "url": "https://github.com/monkey-programmer"
+  },
+  "engines": {
+    "node": "12"
+  },
+  "version": "1.0.0",
+  "scripts": {
+    "start": "jest --watch",
+    "test": "jest",
+    "build": "rimraf types dist && tsc",
+    "clean": "rimraf types dist"
+  },
+  "dependencies": {
+    "@types/debug": "^4.1.6",
+    "debug": "^4.3.2"
+  },
+  "devDependencies": {
+    "@types/jest": "^26.0.24",
+    "rimraf": "^3.0.2",
+    "ts-jest": "^27.0.3",
+    "typescript": "^4.3.5"
+  }
+}
