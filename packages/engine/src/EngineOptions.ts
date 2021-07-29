@@ -19,6 +19,8 @@ export declare type Hook = {
   transited?(context: TransitionContext, output: State): void | Promise<void>
 
   finish?(context: TransitionContext, byPolicy: string): void | Promise<void>
+
+  valid?(context: TransitionContext): void | Promise<void>
 }
 
 export declare type EngineOptions = {

@@ -7,7 +7,7 @@ import {
   TransitionPolicyViolated
 } from './EngineOptions'
 
-type HookMethod = 'invalid' | 'transiting' | 'transited' | 'finish'
+type HookMethod = 'invalid' | 'transiting' | 'transited' | 'finish' | 'valid'
 
 export default class Engine {
   private readonly options: EngineOptions
@@ -26,7 +26,11 @@ export default class Engine {
     for (let i = 0; i < this.options.hooks.length; i++) {
       const hook = this.options.hooks[i]
       if (hook[method]) {
-        ;((await hook[method]) as Function).call(hook, context, extra)
+        if (extra) {
+          ;((await hook[method]) as Function).call(hook, context, extra)
+        } else {
+          ;((await hook[method]) as Function).call(hook, context)
+        }
       }
     }
   }
@@ -75,6 +79,8 @@ export default class Engine {
       const violatedPolicies = invalids.map(([name]) => name)
       await this.callHooks('invalid', context, violatedPolicies)
       throw new TransitionPolicyViolated(violatedPolicies)
+    } else {
+      await this.callHooks('valid', context)
     }
 
     await this.callHooks('transiting', context)

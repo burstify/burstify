@@ -1,9 +1,8 @@
 import Engine from '../src/Engine'
-import { NodeMustConnected } from '../src/TransitionPolicies'
 import { NodeStatus, State } from '../src/Workflow'
 
-const engine = new Engine(
-  {
+describe('Engine transition test suite', () => {
+  const engine = new Engine({
     nodes: [
       {
         name: 'step1'
@@ -13,15 +12,8 @@ const engine = new Engine(
       }
     ],
     graphs: [{ from: 'step1', to: 'step2' }]
-  },
-  {
-    transitionPolicies: {
-      connected: NodeMustConnected
-    }
-  }
-)
+  })
 
-describe('Engine test suite', () => {
   test('Engine transition with default state', async () => {
     const output = await engine.run({
       activate: ['step1'],
