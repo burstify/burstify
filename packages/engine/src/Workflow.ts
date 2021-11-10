@@ -1,11 +1,8 @@
-export declare type Node<Attributes> = {
-  name: string
-  attributes?: Attributes
-}
-
 export declare type Blueprint = {
-  nodes: Node<any>[]
-  graphs: Graph[]
+  nodes: {
+    [node: string]: Record<string, any>
+  }
+  graph: Connection[]
 }
 
 export enum NodeStatus {
@@ -14,21 +11,19 @@ export enum NodeStatus {
 }
 
 export declare type NodeState = {
-  name: string
   status: NodeStatus
+  payload: any[]
 }
 
 export declare type State = {
-  payloads: any[]
-  nodes: NodeState[]
+  [node: string]: NodeState
 }
 
 export declare type Transition<Payload> = {
-  activate: string[]
-  payload?: Payload
+  [node: string]: Payload
 }
 
-export declare type Graph = {
+export declare type Connection = {
   from: string
   to: string
 }

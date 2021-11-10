@@ -6,28 +6,24 @@ export declare type TransitionContext = {
   blueprint: Blueprint
 }
 
-export declare type TransitionPolicy = (context: TransitionContext) => boolean
-
-export declare type EndingPolicy = (output: State) => boolean
+export declare type Policy = (context: TransitionContext) => boolean
 
 export declare type Executor = (
+  node: string,
+  payload: any,
   context: TransitionContext
-) => void | Promise<void>
+) => Promise<void>
 
 export declare type EngineOptions = {
-  endingPolicies: {
-    [policyName: string]: EndingPolicy
-  }
-  transitionPolicies: {
-    [policyName: string]: TransitionPolicy
+  policies: {
+    [policyName: string]: Policy
   }
   executor: Executor
 }
 
-export const NoopExecutor: Executor = () => {}
+export const NoopExecutor: Executor = async () => {}
 
 export const DEFAULT_ENGINE_OPTIONS: EngineOptions = {
-  endingPolicies: {},
-  transitionPolicies: {},
+  policies: {},
   executor: NoopExecutor
 }

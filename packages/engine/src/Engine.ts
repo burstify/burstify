@@ -5,6 +5,12 @@ import {
   TransitionContext
 } from './EngineOptions'
 
+declare type TransitionParameters = {
+  blueprint: Blueprint
+  transition: Transition<any>
+  input?: State
+}
+
 export class TransitionPolicyViolated extends Error {
   constructor(public readonly policies: string[]) {
     super(
@@ -25,21 +31,31 @@ export default class Engine {
   }
 
   private getDefaultState(blueprint: Blueprint): State {
-    return {
-      payloads: [],
-      nodes: blueprint.nodes.map(({ name }) => ({
-        name,
-        status: NodeStatus.INACTIVATED
-      }))
-    }
+    return Object.fromEntries(
+      Object.keys(blueprint.nodes).map((node) => [
+        node,
+        {
+          status: NodeStatus.INACTIVATED,
+          payload: []
+        }
+      ])
+    )
   }
 
-  async transit(context: TransitionContext): Promise<State> {
-    const { input, transition, blueprint } = context
-    const { transitionPolicies, endingPolicies, executor } = this.options
+  async transit({
+    blueprint,
+    transition,
+    input = this.getDefaultState(blueprint)
+  }: TransitionParameters): Promise<State> {
+    const context: TransitionContext = {
+      blueprint,
+      transition,
+      input
+    }
 
-    // TODO transition policy
-    const violatedPolicies: string[] = Object.entries(transitionPolicies)
+    const { policies, executor } = this.options
+
+    const violatedPolicies: string[] = Object.entries(policies)
       .map(([policyName, policy]) => {
         const pass = policy(context)
         return {
@@ -55,15 +71,28 @@ export default class Engine {
       throw new TransitionPolicyViolated(violatedPolicies)
     }
 
-    // TODO execute
-    const output: State = {
-      payloads: [...input.payloads, transition.payload],
-      nodes: [...input.nodes]
-    }
+    const activatedState = Object.fromEntries(
+      Object.entries(input).map(([name, { status, payload }]) => {
+        return [
+          name,
+          {
+            payload,
+            status: Object.keys(transition).includes(name)
+              ? NodeStatus.ACTIVATED
+              : status
+          }
+        ]
+      })
+    )
 
-    // TODO ending policy
-    const shouldEnd = {}
+    Object.entries(transition).map(([node, payload]) => {
+      return executor(node, payload, context)
+        .then(() => {})
+        .catch((error) => {
+          // TODO proceed when activation fail
+        })
+    })
 
-    return output
+    return input
   }
 }

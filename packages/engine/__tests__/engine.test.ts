@@ -1,18 +1,14 @@
-import Engine, { TransitionPolicyViolated } from '../src/Engine'
-import { Blueprint, State, Transition } from '../src/Workflow'
+import { Blueprint, State, Transition, Engine } from '../src'
 
 describe('Engine test suite', () => {
   const transition: Transition<any> = { activate: [] }
 
   const blueprint: Blueprint = {
-    nodes: [],
-    graphs: []
+    nodes: {},
+    graph: []
   }
 
-  const input: State = {
-    nodes: [],
-    payloads: []
-  }
+  const input: State = {}
 
   const assumingContext = {
     blueprint,
@@ -26,8 +22,9 @@ describe('Engine test suite', () => {
     policySpy.mockReturnValue(true)
 
     const engine = new Engine(blueprint, {
-      transitionPolicies: {
-        foo: policySpy
+      policies: {
+        foo: policySpy,
+        bar: policySpy
       }
     })
 
@@ -42,7 +39,7 @@ describe('Engine test suite', () => {
     policySpy.mockReturnValue(false)
 
     const engine = new Engine(blueprint, {
-      transitionPolicies: {
+      policies: {
         foo: policySpy,
         bar: policySpy
       }
@@ -52,5 +49,15 @@ describe('Engine test suite', () => {
       'E_TRANSITION_POLICY:(foo,bar)'
     )
     expect(policySpy).toBeCalledWith(assumingContext)
+  })
+
+  test('Engine can change the node state', () => {
+    const engine = new Engine({
+      nodes: {
+        node1: {},
+        node2: {}
+      },
+      graph: []
+    })
   })
 })
