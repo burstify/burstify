@@ -6,9 +6,8 @@
     "sourceMap": true,
     "sourceRoot": "src",
     "rootDir": "src",
-    "isolatedModules": false,
-    "declarationDir": "types",
-    "declaration": true,
+    "isolatedModules": true,
+    "declaration": false,
     "outDir": "dist",
     "esModuleInterop": true
   },

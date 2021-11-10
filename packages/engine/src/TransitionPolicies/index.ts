@@ -1,3 +1,3 @@
-import NodeMustConnected from './NodeMustConnected'
+import NodeMustBeConnected from './NodeMustBeConnected'
 
-export { NodeMustConnected }
+export { NodeMustBeConnected }

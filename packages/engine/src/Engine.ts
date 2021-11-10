@@ -2,12 +2,18 @@ import { Blueprint, NodeStatus, State, Transition } from './Workflow'
 import {
   DEFAULT_ENGINE_OPTIONS,
   EngineOptions,
-  Policy,
-  TransitionContext,
-  TransitionPolicyViolated
+  TransitionContext
 } from './EngineOptions'
 
-type HookMethod = 'invalid' | 'transiting' | 'transited' | 'finish' | 'valid'
+export class TransitionPolicyViolated extends Error {
+  constructor(public readonly policies: string[]) {
+    super(
+      `E_TRANSITION_POLICY:(${policies.join()}):Transition ${
+        policies.length > 1 ? 'policies' : 'policy'
+      } [${policies.join(', ')}] was violated`
+    )
+  }
+}
 
 export default class Engine {
   private readonly options: EngineOptions
@@ -18,92 +24,45 @@ export default class Engine {
     this.options = { ...DEFAULT_ENGINE_OPTIONS, ...options }
   }
 
-  private async callHooks(
-    method: HookMethod,
-    context: TransitionContext,
-    extra?: any
-  ) {
-    for (let i = 0; i < this.options.hooks.length; i++) {
-      const hook = this.options.hooks[i]
-      if (hook[method]) {
-        if (extra) {
-          ;((await hook[method]) as Function).call(hook, context, extra)
-        } else {
-          ;((await hook[method]) as Function).call(hook, context)
-        }
-      }
-    }
-  }
-
-  private validate(context: TransitionContext) {
-    const { transitionPolicies } = this.options
-
-    const results = Object.entries(transitionPolicies).map(
-      ([name, policy]) => [name, policy(context)] as [string, boolean]
-    )
-
-    return results.filter(([, result]) => !result)
-  }
-
-  private shouldBeFinished(
-    context: TransitionContext
-  ): [string, Policy] | undefined {
-    const { endingPolicies } = this.options
-
-    return Object.entries(endingPolicies).find(([, policy]) => policy(context))
-  }
-
-  private getDefaultState(): State {
+  private getDefaultState(blueprint: Blueprint): State {
     return {
       payloads: [],
-      nodes: this.blueprint.nodes.map(({ name }) => ({
+      nodes: blueprint.nodes.map(({ name }) => ({
         name,
         status: NodeStatus.INACTIVATED
       }))
     }
   }
 
-  async run(
-    transition: Transition<any>,
-    input: State = this.getDefaultState()
-  ): Promise<State> {
-    const context: TransitionContext = {
-      blueprint: this.blueprint,
-      input,
-      transition
-    }
+  async transit(context: TransitionContext): Promise<State> {
+    const { input, transition, blueprint } = context
+    const { transitionPolicies, endingPolicies, executor } = this.options
 
-    const invalids = this.validate(context)
-
-    if (invalids.length) {
-      const violatedPolicies = invalids.map(([name]) => name)
-      await this.callHooks('invalid', context, violatedPolicies)
-      throw new TransitionPolicyViolated(violatedPolicies)
-    } else {
-      await this.callHooks('valid', context)
-    }
-
-    await this.callHooks('transiting', context)
-
-    const output: State = {
-      payloads: [...input.payloads, transition.payload],
-      nodes: input.nodes.map(({ name }) => {
+    // TODO transition policy
+    const violatedPolicies: string[] = Object.entries(transitionPolicies)
+      .map(([policyName, policy]) => {
+        const pass = policy(context)
         return {
-          name,
-          status: transition.activate.includes(name)
-            ? NodeStatus.ACTIVATED
-            : NodeStatus.INACTIVATED
+          policy: policyName,
+          pass
         }
       })
+      .reduce((violatedPolicies: string[], { policy, pass }) => {
+        return pass ? violatedPolicies : [...violatedPolicies, policy]
+      }, [])
+
+    if (violatedPolicies.length) {
+      throw new TransitionPolicyViolated(violatedPolicies)
     }
 
-    await this.callHooks('transited', context, output)
-
-    const endingPolicy = this.shouldBeFinished(context)
-
-    if (endingPolicy) {
-      await this.callHooks('finish', context, endingPolicy[0])
+    // TODO execute
+    const output: State = {
+      payloads: [...input.payloads, transition.payload],
+      nodes: [...input.nodes]
     }
+
+    // TODO ending policy
+    const shouldEnd = {}
 
     return output
   }
