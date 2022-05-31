@@ -4,22 +4,8 @@ import {
   EngineOptions,
   TransitionContext
 } from './EngineOptions'
-
-declare type TransitionParameters = {
-  blueprint: Blueprint
-  transition: Transition<any>
-  input?: State
-}
-
-export class TransitionPolicyViolated extends Error {
-  constructor(public readonly policies: string[]) {
-    super(
-      `E_TRANSITION_POLICY:(${policies.join()}):Transition ${
-        policies.length > 1 ? 'policies' : 'policy'
-      } [${policies.join(', ')}] was violated`
-    )
-  }
-}
+import PolicyViolated from './PolicyViolated'
+import { Observable } from 'rxjs'
 
 export default class Engine {
   private readonly options: EngineOptions
@@ -42,18 +28,8 @@ export default class Engine {
     )
   }
 
-  async transit({
-    blueprint,
-    transition,
-    input = this.getDefaultState(blueprint)
-  }: TransitionParameters): Promise<State> {
-    const context: TransitionContext = {
-      blueprint,
-      transition,
-      input
-    }
-
-    const { policies, executor } = this.options
+  private checkForPolicies(context: TransitionContext) {
+    const { policies } = this.options
 
     const violatedPolicies: string[] = Object.entries(policies)
       .map(([policyName, policy]) => {
@@ -68,31 +44,60 @@ export default class Engine {
       }, [])
 
     if (violatedPolicies.length) {
-      throw new TransitionPolicyViolated(violatedPolicies)
+      throw new PolicyViolated(violatedPolicies)
+    }
+  }
+
+  public transit(
+    transition: Transition<any>,
+    input = this.getDefaultState(this.blueprint)
+  ): Observable<State> {
+    const context: TransitionContext = {
+      blueprint: this.blueprint,
+      transition,
+      input
     }
 
-    const activatedState = Object.fromEntries(
-      Object.entries(input).map(([name, { status, payload }]) => {
-        return [
-          name,
-          {
-            payload,
-            status: Object.keys(transition).includes(name)
-              ? NodeStatus.ACTIVATED
-              : status
-          }
-        ]
-      })
-    )
+    this.checkForPolicies(context)
 
-    Object.entries(transition).map(([node, payload]) => {
-      return executor(node, payload, context)
-        .then(() => {})
-        .catch((error) => {
-          // TODO proceed when activation fail
+    const { executor } = this.options
+
+    return new Observable<State>((subscriber) => {
+      const activatedState = Object.fromEntries(
+        Object.entries(input).map(([name, { status, payload }]) => {
+          return [
+            name,
+            {
+              payload,
+              status: Object.keys(transition).includes(name)
+                ? NodeStatus.ACTIVATED
+                : status
+            }
+          ]
         })
-    })
+      )
 
-    return input
+      subscriber.next(activatedState)
+
+      Promise.all(
+        Object.entries(transition).map(([node, payload]) => {
+          return executor(node, payload, context)
+            .then(() => {
+              subscriber.next({
+                ...activatedState,
+                [node]: {
+                  status: activatedState[node].status,
+                  payload: [...activatedState[node].payload, payload]
+                }
+              })
+            })
+            .catch((error) => {
+              subscriber.error(error)
+            })
+        })
+      ).then(() => {
+        subscriber.complete()
+      })
+    })
   }
 }

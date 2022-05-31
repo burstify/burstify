@@ -1,4 +1,5 @@
-import Engine, { TransitionPolicyViolated } from './Engine'
+import Engine from './Engine'
+import PolicyViolated from './PolicyViolated'
 import {
   EngineOptions,
   Policy,
@@ -25,10 +26,10 @@ export {
   TransitionContext,
   DEFAULT_ENGINE_OPTIONS,
   NoopExecutor,
-  TransitionPolicyViolated,
   State,
   Transition,
   NodeState,
   NodeStatus,
-  Connection
+  Connection,
+  PolicyViolated
 }
